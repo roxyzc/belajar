@@ -7,6 +7,7 @@ import {
   deleteUser,
   findUser,
   findUsers,
+  changePassword,
 } from "../controllers/user.controller";
 const route = Router();
 
@@ -18,5 +19,6 @@ route
   .put(updateUser);
 route.route("/:id").get(findUser).delete(deleteUser);
 route.post("/login", login);
+route.post("/changePassword", changePassword);
 
 export default route;

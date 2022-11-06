@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import { sendEmail } from "../utils/sendEmail";
 const prisma = new PrismaClient();
 
 export const register = async (req: Request, res: Response): Promise<any> => {
@@ -152,5 +153,25 @@ export const deleteUsers = async (_req: Request, res: Response) => {
     res.status(200).json({ success: true, message: users });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const changePassword = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const user = await prisma.user.findFirst({
+      where: {
+        email: req.body.email,
+      },
+    });
+    if (!user)
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
+    await sendEmail(req, res, user);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
