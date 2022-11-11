@@ -250,7 +250,7 @@ export const changePasswordNew = (req: Request, res: Response) => {
         return res.status(400).json({
           success: false,
           message:
-            "Your password don't match or password and confirm password exist",
+            "Your password don't match or password and confirm password is undefined",
         });
       }
       const hash = await bcrypt.hash(password, 10);
