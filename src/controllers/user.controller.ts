@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { sendEmail } from "../utils/sendEmail";
@@ -170,8 +170,120 @@ export const changePassword = async (
       return res
         .status(400)
         .json({ success: false, message: "User not found" });
-    await sendEmail(req, res, user);
+
+    const otp = `${Math.floor(1000 + Math.random() * 9000)}`;
+    const msg = await sendEmail(otp, user);
+    const hashOtp = await bcrypt.hash(otp, 10);
+    const cekOtp = await prisma.otp.findFirst({
+      where: {
+        userId: user.id,
+      },
+    });
+    if (!cekOtp) {
+      await prisma.otp.create({
+        data: {
+          userId: user.id,
+          otp: hashOtp,
+          expiredAt: new Date(new Date().getTime() + 3600000),
+        },
+      });
+    }
+    if (cekOtp) {
+      await prisma.otp.update({
+        where: {
+          id: cekOtp.id,
+        },
+        data: {
+          otp: hashOtp,
+        },
+      });
+    }
+    res.status(200).json({ success: true, message: msg });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const verifyOtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<any> => {
+  try {
+    const user = await prisma.otp.findFirst({
+      where: {
+        userId: req.params.id,
+      },
+    });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    const valid = await bcrypt.compare(req.body.otp, user?.otp);
+    if (!valid)
+      return res.status(400).json({ success: false, message: "Otp invalid" });
+    if (user.expiredAt < new Date(Date.now())) {
+      await prisma.otp.delete({
+        where: {
+          id: user.id,
+        },
+      });
+      return res.status(403).json({ success: false, message: "Otp expired" });
+    }
+    req.user = user.id as string;
+    next();
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const changePasswordNew = (req: Request, res: Response) => {
+  try {
+    verifyOtp(req, res, async (): Promise<any> => {
+      const { password, confirmPassword } = req.body;
+      if (
+        password !== confirmPassword ||
+        (password == undefined && confirmPassword == undefined) ||
+        (password == undefined && confirmPassword !== undefined) ||
+        (password !== undefined && confirmPassword === undefined)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Your password don't match or password and confirm password exist",
+        });
+      }
+      const hash = await bcrypt.hash(password, 10);
+      const user = await prisma.user.update({
+        where: {
+          id: req.params.id,
+        },
+        data: {
+          password: hash,
+        },
+      });
+      console.log(req.user);
+      await prisma.otp.delete({
+        where: {
+          id: req.user as string,
+        },
+      });
+      return res.status(200).json({ success: true, user });
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const cekOtp = async (_req: Request, res: Response) => {
+  try {
+    const users = await prisma.otp.findMany({
+      include: {
+        user: true,
+      },
+    });
+    res.status(200).json({ success: true, users });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
