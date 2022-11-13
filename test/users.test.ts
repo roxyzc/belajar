@@ -19,6 +19,13 @@ describe("coba1", () => {
 
 describe("coba2", () => {
   it("test", () => {
-    expect(2 + 2).toBe(4);
+    const coba: String = "10023900";
+    let array: Number[] = [];
+    for (let i = 0; i < coba.length; i++) {
+      array[i] = Number(coba.charAt(i));
+    }
+
+    array.sort(() => 0.5 - Math.random());
+    console.log(array);
   });
 });

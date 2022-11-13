@@ -14,7 +14,8 @@ import {
 } from "../controllers/user.controller";
 const route = Router();
 
-route.post("/otp/:id", verifyOtp, changePasswordNew);
+// route.post("/otp/:id", verifyOtp, changePasswordNew);
+route.route("/otp/:id").post(verifyOtp).put(changePasswordNew);
 route.get("/otp", cekOtp);
 route
   .route("/")
